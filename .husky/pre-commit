@@ -1,0 +1,2 @@
+npm run lint:prettier:check
+npx lint-staged
