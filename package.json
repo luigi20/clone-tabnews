@@ -14,7 +14,7 @@
   "author": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npm run services:up && npm run services:wait:database && npm run migrations:up && next dev",
+    "dev": "npm run services:up && npm run services:wait:database && npm run migrations:up && (trap 'npm run services:stop' INT TERM HUP; next dev -p 3000)",
     "postdev": "npm run services:stop",
     "test": "npm run services:up && concurrently --names  next,jest --hide next --k --success command-jest \"next dev\" \"jest --runInBand --verbose\"",
     "posttest": "npm run services:stop",
