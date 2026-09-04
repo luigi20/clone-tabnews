@@ -1,8 +1,10 @@
 import database from "infra/database.js";
+import password from "models/password.js";
 import { ValidationError, NotFoundError } from "infra/errors.js";
 async function create(user_input_values) {
   await validateUniqueEmail(user_input_values.email);
   await validateUniqueUserName(user_input_values.username);
+  await hash_password_in_object(user_input_values);
   const new_user = await runInsertQuery(user_input_values);
   return new_user;
 
@@ -30,6 +32,10 @@ async function create(user_input_values) {
       });
   }
 
+  async function hash_password_in_object(userInputValues) {
+    const hash_password = await password.hash(userInputValues.password);
+    userInputValues.password = hash_password;
+  }
   async function runInsertQuery(user_input_values) {
     const result = await database.query({
       text: `
@@ -56,7 +62,6 @@ async function findOneByUsername(username) {
       text: `SELECT * FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1`,
       values: [username],
     });
-    console.log(result.rowCount);
     if (result.rowCount === 0)
       throw new NotFoundError({
         name: "NotFoundError",
