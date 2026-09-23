@@ -1,7 +1,7 @@
 import orchestrator from "tests/orchestrator.js";
 import { version as uuid_version } from "uuid";
-import user from "models/user.js";
-import password from "models/password.js";
+import setCookieParser from "set-cookie-parser";
+import session from "models/session.js";
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await orchestrator.clearDatabase();
@@ -81,7 +81,7 @@ describe("POST /api/v1/sessions", () => {
     });
 
     test("With correct `email` and correct `password`", async () => {
-      await orchestrator.createUser({
+      const created_user = await orchestrator.createUser({
         email: "tudo.correto@curso.dev",
         password: "tudocorreto",
       });
@@ -95,7 +95,35 @@ describe("POST /api/v1/sessions", () => {
           password: "tudocorreto",
         }),
       });
+      const response_body = await response.json();
       expect(response.status).toBe(201);
+      expect(response_body).toEqual({
+        id: response_body.id,
+        token: response_body.token,
+        user_id: created_user.id,
+        expires_at: response_body.expires_at,
+        created_at: response_body.created_at,
+        updated_at: response_body.updated_at,
+      });
+      expect(uuid_version(response_body.id)).toBe(4);
+      expect(Date.parse(response_body.created_at)).not.toBeNaN();
+      expect(Date.parse(response_body.updated_at)).not.toBeNaN();
+      expect(Date.parse(response_body.expires_at)).not.toBeNaN();
+      const expires_at = new Date(response_body.expires_at);
+      const created_at = new Date(response_body.created_at);
+      expires_at.setMilliseconds(0);
+      created_at.setMilliseconds(0);
+      expect(expires_at - created_at).toBe(session.expiration_in_milliseconds);
+      const parsed_set_cookie = setCookieParser(response, {
+        map: true,
+      });
+      expect(parsed_set_cookie.session_id).toEqual({
+        name: "session_id",
+        value: response_body.token,
+        maxAge: session.expiration_in_milliseconds / 1000,
+        path: "/",
+        httpOnly: true,
+      });
     });
   });
 });
