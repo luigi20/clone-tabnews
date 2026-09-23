@@ -1,5 +1,5 @@
 import bcryptjs from "bcryptjs";
-
+import { InternalServerError } from "infra/errors";
 async function hash(password) {
   const rounds = getNumberofRounds();
 
