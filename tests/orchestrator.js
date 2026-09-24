@@ -48,6 +48,11 @@ async function runPendingMigrations() {
   await migrator.runPendingMigrations();
 }
 
+function extractUUID(text) {
+  const match = text.match(/[0-9a-fA-F-]{36}/);
+  return match ? match[0] : null;
+}
+
 async function createUser(user_object) {
   return await user.create({
     username:
@@ -92,5 +97,6 @@ const orchestrator = {
   create_session,
   delete_all_email,
   get_last_email,
+  extractUUID,
 };
 export default orchestrator;
