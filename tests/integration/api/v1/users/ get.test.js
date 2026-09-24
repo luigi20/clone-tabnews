@@ -21,6 +21,10 @@ describe("GET /api/v1/users", () => {
         },
       });
       expect(response.status).toBe(200);
+      const cache_control = response.headers.get("Cache-Control");
+      expect(cache_control).toBe(
+        "no-store, no-cacje, max-age=0, must-revalidate",
+      );
       const response_body = await response.json();
       expect(response_body).toEqual({
         id: response_body.id,
@@ -118,7 +122,6 @@ describe("GET /api/v1/users", () => {
       });
       expect(response.status).toBe(200);
       const responseBody = await response.json();
-
       expect(responseBody).toEqual({
         id: createdUser.id,
         username: "UserWithHalfTimeSession",
