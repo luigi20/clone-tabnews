@@ -23,13 +23,15 @@ describe("GET /api/v1/users", () => {
       expect(response.status).toBe(200);
       const cache_control = response.headers.get("Cache-Control");
       expect(cache_control).toBe(
-        "no-store, no-cacje, max-age=0, must-revalidate",
+        "no-store, no-cache, max-age=0, must-revalidate",
       );
       const response_body = await response.json();
       expect(response_body).toEqual({
         id: response_body.id,
         username: "UserWithValidSession",
         email: create_user.email,
+        password: create_user.password,
+        features: [],
         password: create_user.password,
         created_at: create_user.created_at.toISOString(),
         updated_at: create_user.updated_at.toISOString(),
@@ -150,6 +152,8 @@ describe("GET /api/v1/users", () => {
         id: createdUser.id,
         username: "UserWithHalfTimeSession",
         email: createdUser.email,
+        password: createdUser.password,
+        features: [],
         password: createdUser.password,
         created_at: createdUser.created_at.toISOString(),
         updated_at: createdUser.updated_at.toISOString(),

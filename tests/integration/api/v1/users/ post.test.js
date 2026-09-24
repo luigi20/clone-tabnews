@@ -29,6 +29,8 @@ describe("POST /api/v1/users", () => {
         username: "filipedeschamps",
         email: "filipedeschamps@gmail.com",
         password: response_body.password,
+        features: [],
+        password: response_body.password,
         created_at: response_body.created_at,
         updated_at: response_body.updated_at,
       });
@@ -78,6 +80,8 @@ describe("POST /api/v1/users", () => {
         username: "emailduplicado1",
         email: "cursos@gmail.com",
         password: response_body.password,
+        features: [],
+        password: response_body.password,
         created_at: response_body.created_at,
         updated_at: response_body.updated_at,
       });
@@ -121,6 +125,8 @@ describe("POST /api/v1/users", () => {
         id: response_body.id,
         username: "emailduplicado3",
         email: "cursos1@gmail.com",
+        password: response_body.password,
+        features: [],
         password: response_body.password,
         created_at: response_body.created_at,
         updated_at: response_body.updated_at,

@@ -22,7 +22,7 @@ async function getHandler(request, response) {
   const user_found = await user.findOneById(session_object.user_id);
   response.setHeader(
     "Cache-Control",
-    "no-store, no-cacje, max-age=0, must-revalidate",
+    "no-store, no-cache, max-age=0, must-revalidate",
   );
   return response.status(200).json(user_found);
 }
