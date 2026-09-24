@@ -1,0 +1,58 @@
+import orchestrator from "tests/orchestrator.js";
+import activation from "models/activation.js";
+beforeAll(async () => {
+  await orchestrator.waitForAllServices();
+  await orchestrator.clearDatabase();
+  await orchestrator.runPendingMigrations();
+  await orchestrator.delete_all_email();
+});
+
+describe("Use case: Registration Flow (all successful", () => {
+  let create_user_response_body;
+  test("Create user account", async () => {
+    const create_user_response = await fetch(
+      "http://localhost:3000/api/v1/users",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: "RegistrationFlow",
+          email: "registration.flow@curso.dev",
+          password: "RegistrationFlowPassword",
+        }),
+      },
+    );
+    expect(create_user_response.status).toBe(201);
+    create_user_response_body = await create_user_response.json();
+    expect(create_user_response_body).toEqual({
+      id: create_user_response_body.id,
+      username: "RegistrationFlow",
+      email: "registration.flow@curso.dev",
+      password: create_user_response_body.password,
+      features: ["read:activation_token"],
+      password: create_user_response_body.password,
+      created_at: create_user_response_body.created_at,
+      updated_at: create_user_response_body.updated_at,
+    });
+  });
+
+  test("Receive activation email", async () => {
+    const last_email = await orchestrator.get_last_email();
+    const activation_token = await activation.findOneByUserId(
+      create_user_response_body.id,
+    );
+    expect(last_email.sender).toBe("<contato@fintab.com.br>");
+    expect(last_email.recipients[0]).toBe("<registration.flow@curso.dev>");
+    expect(last_email.subject).toBe("Ative seu cadastro no FinTab!");
+    expect(last_email.text).toContain("RegistrationFlow");
+    expect(last_email.text).toContain(activation_token.id);
+  });
+
+  test("Activate account", async () => {});
+
+  test("Login", async () => {});
+
+  test("Get user information", async () => {});
+});
