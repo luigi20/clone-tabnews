@@ -12,12 +12,16 @@ function onErrorHandler(error, request, response) {
     error instanceof ValidationError ||
     error instanceof NotFoundError ||
     error instanceof UnauthorizedError
-  )
-    return response.status(error.statusCode).json(error);
-  const publicErrorObject = new InternalServerError({
-    cause: error,
-  });
-  response.status(publicErrorObject.statusCode).json(publicErrorObject);
+  ) {
+    if (error instanceof ValidationError || error instanceof NotFoundError) {
+      return response.status(error.statusCode).json(error);
+    }
+
+    if (error instanceof UnauthorizedError) {
+      clearSessionCookie(response);
+      return response.status(error.statusCode).json(error);
+    }
+  }
 }
 
 function onNoMatchHandler(request, response) {
