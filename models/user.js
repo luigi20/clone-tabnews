@@ -121,16 +121,17 @@ async function setFeatures(user_id, features) {
   async function runUpdateQuery(user_id, features) {
     const result = await database.query({
       text: `
-        UPDATE
-          users
+        UPDATE users
         SET
           features = $2,
-          updated_at = timezone('utc',now())
+          updated_at = timezone('utc', now())
         WHERE
           id = $1
+        RETURNING *;
       `,
       values: [user_id, features],
     });
+
     return result.rows[0];
   }
 }

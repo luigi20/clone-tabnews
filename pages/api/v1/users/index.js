@@ -5,7 +5,9 @@ import session from "models/session.js";
 import activation from "models/activation.js";
 const router = createRouter();
 router.post(postHandler);
-router.get(getHandler);
+router.use(controller.injectAnonymousOrUser);
+router.get(controller.canRequest("read:session"), getHandler);
+
 export default router.handler(controller.errorHandlers);
 
 async function postHandler(request, response) {
