@@ -2,7 +2,7 @@ import { createRouter } from "next-connect";
 import controller from "infra/controller";
 import user from "models/user.js";
 import session from "models/session.js";
-import activation from "models/activation";
+import activation from "models/activation.js";
 const router = createRouter();
 router.post(postHandler);
 router.get(getHandler);
