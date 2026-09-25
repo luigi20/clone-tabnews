@@ -2,6 +2,7 @@ import orchestrator from "tests/orchestrator.js";
 import { version as uuid_version } from "uuid";
 import user from "models/user.js";
 import password from "models/password.js";
+import webserver from "infra/webserver.js";
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await orchestrator.clearDatabase();
@@ -147,7 +148,7 @@ describe("POST /api/v1/users", () => {
     test("With unique and valid data", async () => {
       const user1 = await orchestrator.createUser();
       await orchestrator.activate_user(user1);
-      const user1SessionObject = await orchestrator.create_session(user1);
+      const user1SessionObject = await orchestrator.create_session(user1.id);
 
       const user2Response = await fetch(`${webserver.origin}/api/v1/users`, {
         method: "POST",
