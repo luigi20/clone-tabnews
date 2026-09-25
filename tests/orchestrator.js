@@ -4,6 +4,7 @@ import migrator from "models/migrator.js";
 import user from "models/user.js";
 import { faker } from "@faker-js/faker";
 import session from "models/session.js";
+import activation from "models/activation";
 
 const email_http_url = `http://${process.env.EMAIL_HTTP_HOST}:${process.env.EMAIL_HTTP_PORT}/`;
 async function waitForAllServices() {
@@ -64,6 +65,7 @@ async function createUser(user_object) {
         .replace("-", ""),
     email: user_object?.email || faker.internet.email(),
     password: user_object?.password || "validPassword",
+    features: user_object?.features || [],
   });
 }
 
@@ -89,6 +91,10 @@ async function get_last_email() {
   last_email_item.text = email_text_body;
   return last_email_item;
 }
+
+async function activate_user(inactive_user) {
+  return await activation.activateUserByUserId(inactive_user.id);
+}
 const orchestrator = {
   waitForAllServices,
   clearDatabase,
@@ -98,5 +104,6 @@ const orchestrator = {
   delete_all_email,
   get_last_email,
   extractUUID,
+  activate_user,
 };
 export default orchestrator;

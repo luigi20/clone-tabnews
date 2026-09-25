@@ -8,6 +8,7 @@ import {
 import * as cookie from "cookie";
 import session from "models/session.js";
 import user from "models/user.js";
+import authorization from "models/authorization.js";
 function onErrorHandler(error, request, response) {
   if (
     error instanceof ValidationError ||
@@ -80,7 +81,7 @@ function injectAnonymousUser(request) {
 function canRequest(feature) {
   return function canRequestMiddleware(request, response, next) {
     const user_trying_to_request = request.context.user;
-    if (user_trying_to_request.features.includes(feature)) return next();
+    if (authorization.can(user_trying_to_request, feature)) return next();
     throw new ForbiddenError({
       message: "Você não possui permissão para executar esta ação.",
       action: `Verifique se o seu usuário possui a feature "${feature}`,
