@@ -28,8 +28,6 @@ describe("POST /api/v1/users", () => {
       expect(response_body).toEqual({
         id: response_body.id,
         username: "filipedeschamps",
-        email: "filipedeschamps@gmail.com",
-        password: response_body.password,
         features: ["read:activation_token"],
         password: response_body.password,
         created_at: response_body.created_at,
@@ -79,8 +77,6 @@ describe("POST /api/v1/users", () => {
       expect(response_body).toEqual({
         id: response_body.id,
         username: "emailduplicado1",
-        email: "cursos@gmail.com",
-        password: response_body.password,
         features: ["read:activation_token"],
         password: response_body.password,
         created_at: response_body.created_at,
@@ -125,8 +121,6 @@ describe("POST /api/v1/users", () => {
       expect(response_body).toEqual({
         id: response_body.id,
         username: "emailduplicado3",
-        email: "cursos1@gmail.com",
-        password: response_body.password,
         features: ["read:activation_token"],
         password: response_body.password,
         created_at: response_body.created_at,
@@ -149,7 +143,6 @@ describe("POST /api/v1/users", () => {
       const user1 = await orchestrator.createUser();
       await orchestrator.activate_user(user1);
       const user1SessionObject = await orchestrator.create_session(user1.id);
-
       const user2Response = await fetch(`${webserver.origin}/api/v1/users`, {
         method: "POST",
         headers: {

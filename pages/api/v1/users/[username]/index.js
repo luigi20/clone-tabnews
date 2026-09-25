@@ -11,9 +11,15 @@ export default createRouter()
   .handler(controller.errorHandlers);
 
 async function getHandler(request, response) {
+  const user_trying_to_get = request.context.user;
   const username = request.query.username;
   const user_found = await user.findOneByUsername(username);
-  return response.status(200).json(user_found);
+  const secure_output_values = authorization.filterOutput(
+    user_trying_to_get,
+    "read:user",
+    user_found,
+  );
+  return response.status(200).json(secure_output_values);
 }
 
 async function patchHandler(request, response) {
@@ -21,13 +27,16 @@ async function patchHandler(request, response) {
   const user_input_values = request.body;
   const user_trying_to_patch = request.context.user;
   const target_user = await user.findOneByUsername(username);
-  console.log("oi");
-  console.log(target_user);
   if (!authorization.can(user_trying_to_patch, "update:user", target_user))
     throw new ForbiddenError({
       message: "Você não possui permissão para atualizar outro usuário",
       action: "Verifique se você possui a feature para atualizar outro usuário",
     });
-  const update_user = await user.update(username, user_input_values);
-  return response.status(200).json(update_user);
+  const updated_user = await user.update(username, user_input_values);
+  const secure_output_values = authorization.filterOutput(
+    user_trying_to_patch,
+    "read:user",
+    updated_user,
+  );
+  return response.status(200).json(secure_output_values);
 }

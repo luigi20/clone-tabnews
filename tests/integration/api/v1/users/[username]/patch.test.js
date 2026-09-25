@@ -182,10 +182,7 @@ describe("PATCH /api/v1/users/[username]", () => {
       expect(response_body).toEqual({
         id: result.id,
         username: "uniqueuser2",
-        email: result.email,
-        password: result.password,
         features: ["create:session", "read:session", "update:user"],
-        password: result.password,
         created_at: response_body.created_at,
         updated_at: response_body.updated_at,
       });
@@ -221,8 +218,6 @@ describe("PATCH /api/v1/users/[username]", () => {
       expect(response_body).toEqual({
         id: response_body.id,
         username: response_body.username,
-        email: "uniqueemail2@curso.dev",
-        password: response_body.password,
         features: ["create:session", "read:session", "update:user"],
         password: response_body.password,
         created_at: response_body.created_at,
@@ -263,10 +258,7 @@ describe("PATCH /api/v1/users/[username]", () => {
       expect(response_body).toEqual({
         id: response_body.id,
         username: result.username,
-        email: result.email,
-        password: response_body.password,
         features: ["create:session", "read:session", "update:user"],
-        password: response_body.password,
         created_at: response_body.created_at,
         updated_at: response_body.updated_at,
       });
@@ -292,6 +284,47 @@ describe("PATCH /api/v1/users/[username]", () => {
 
       expect(correctPasswordMatch).toBe(true);
       expect(incorrectPasswordMatch).toBe(false);
+    });
+  });
+
+  describe("Privileged user", () => {
+    test("With `update:user:others` targeting `defaultUser`", async () => {
+      const privileged_user = await orchestrator.createUser();
+      const activated_user_privileged =
+        await orchestrator.activate_user(privileged_user);
+      await orchestrator.addFeaturesToUser(privileged_user, [
+        "update:user:others",
+      ]);
+      const privileged_user_session = await orchestrator.create_session(
+        activated_user_privileged.id,
+      );
+      const default_user = await orchestrator.createUser();
+      const response = await fetch(
+        `http://localhost:3000/api/v1/users/${default_user.username}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: `session_id=${privileged_user_session.token}`,
+          },
+          body: JSON.stringify({
+            username: "AlteradoPorPrivilegiado",
+          }),
+        },
+      );
+      expect(response.status).toBe(200);
+      const response_body = await response.json();
+      expect(response_body).toEqual({
+        id: default_user.id,
+        username: "AlteradoPorPrivilegiado",
+        features: default_user.features,
+        created_at: response_body.created_at,
+        updated_at: response_body.updated_at,
+      });
+      expect(uuid_version(response_body.id)).toBe(4);
+      expect(Date.parse(response_body.created_at)).not.toBeNaN();
+      expect(Date.parse(response_body.updated_at)).not.toBeNaN();
+      expect(response_body.updated_at > response_body.created_at).toBe(true);
     });
   });
 });

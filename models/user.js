@@ -136,6 +136,28 @@ async function setFeatures(user_id, features) {
   }
 }
 
+async function addFeatures(user_id, features) {
+  const result = await runUpdateQuery(user_id, features);
+  return result;
+
+  async function runUpdateQuery(user_id, features) {
+    const result = await database.query({
+      text: `
+        UPDATE users
+        SET
+          features = array_cat(features,$2),
+          updated_at = timezone('utc', now())
+        WHERE
+          id = $1
+        RETURNING *;
+      `,
+      values: [user_id, features],
+    });
+
+    return result.rows[0];
+  }
+}
+
 async function findOneById(user_id) {
   const result = await runSelectQuery(user_id);
   return result;
@@ -225,6 +247,7 @@ const user = {
   findOneByEmail,
   findOneById,
   setFeatures,
+  addFeatures,
 };
 
 export default user;

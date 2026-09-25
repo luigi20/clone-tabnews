@@ -25,13 +25,24 @@ async function postHandler(request, response) {
     });
   const new_session = await session.create(authenticated_user.id);
   controller.setSessionCookie(new_session.token, response);
-  return response.status(201).json(new_session);
+  const secure_output_values = authorization.filterOutput(
+    authenticated_user,
+    "read:session",
+    new_session,
+  );
+  return response.status(201).json(secure_output_values);
 }
 
 async function deleteHandler(request, response) {
+  const user_trying_to_delete = request.context.user;
   const session_token = request.cookies.session_id;
   const session_object = await session.findOneValidByToken(session_token);
   const expired_session = await session.expireById(session_object.id);
   controller.clearSessionCookie(response);
-  return response.status(200).json(expired_session);
+  const secure_output_values = authorization.filterOutput(
+    user_trying_to_delete,
+    "read:session",
+    expired_session,
+  );
+  return response.status(200).json(secure_output_values);
 }
