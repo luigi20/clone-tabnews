@@ -10,16 +10,17 @@ const transporter = nodemailer.createTransport({
   secure: process.env.NODE_ENV === "production" ? true : false,
 });
 async function send(mail_options) {
-  // try {
-  await transporter.sendMail(mail_options);
-  /* } catch (error) {
+  try {
+    const a = await transporter.sendMail(mail_options);
+    console.log(a);
+  } catch (error) {
     throw new ServiceError({
       message: "Não foi possível enviar o email",
       action: "Verifique se o serviço de email está disponível.",
       cause: error,
       context: mail_options,
     });
-  }*/
+  }
 }
 
 const email = {
