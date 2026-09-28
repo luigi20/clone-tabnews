@@ -145,7 +145,7 @@ function validateFeature(feature) {
 }
 
 function validateResource(resource) {
-  if (!resource) {
+  if (!resource || typeof resource !== "object") {
     throw new InternalServerError({
       cause:
         "É necessário fornecer um `resource` em `authorization.filterOutput()`.",
