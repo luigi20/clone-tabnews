@@ -22,5 +22,6 @@ async function patchHandler(request, response) {
     "read:activation_token",
     used_activation_token,
   );
+
   return response.status(201).json(secure_output_values);
 }
