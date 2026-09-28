@@ -1,11 +1,9 @@
 import useSWR from "swr";
 
 async function fetchAPI(key) {
-  const response = await fetch(key, {
-    method: "GET",
-  });
-  const response_body = await response.json();
-  return response_body;
+  const response = await fetch(key);
+  const responseBody = await response.json();
+  return responseBody;
 }
 
 export default function StatusPage() {
@@ -13,32 +11,50 @@ export default function StatusPage() {
     <>
       <h1>Status</h1>
       <UpdatedAt />
+      <DatabaseStatus />
     </>
   );
 }
 
 function UpdatedAt() {
-  const { data, isLoading } = useSWR("/api/v1/status", fetchAPI, {
+  const { isLoading, data } = useSWR("/api/v1/status", fetchAPI, {
     refreshInterval: 2000,
   });
-  let updated_at_text = "Carregando...";
-  let max_connections = "Caregando...";
-  let used_connections = "Carregando...";
-  let version = "Carregando...";
+
+  let updatedAtText = "Carregando...";
+
   if (!isLoading && data) {
-    updated_at_text = new Date(data.updated_at).toLocaleString("pt-BR");
-    max_connections = parseInt(data.max_connections);
-    used_connections = parseInt(data.used_connections);
-    version = parseInt(data.version);
+    updatedAtText = new Date(data.updated_at).toLocaleString("pt-BR");
   }
+
+  return <div>Última atualização: {updatedAtText}</div>;
+}
+
+function DatabaseStatus() {
+  const { isLoading, data } = useSWR("/api/v1/status", fetchAPI, {
+    refreshInterval: 2000,
+  });
+
+  let databaseStatusInformation = "Carregando...";
+
+  if (!isLoading && data) {
+    databaseStatusInformation = (
+      <>
+        <div>Versão: {data.dependencies.database.version}</div>
+        <div>
+          Conexões abertas: {data.dependencies.database.opened_connections}
+        </div>
+        <div>
+          Conexões máximas: {data.dependencies.database.max_connections}
+        </div>
+      </>
+    );
+  }
+
   return (
-    <div>
-      Última Atualização: {updated_at_text}
-      <br /> Máximo de conexões: {max_connections}
-      <br />
-      Conexões usadas: {used_connections}
-      <br />
-      Versão: {version}
-    </div>
+    <>
+      <h2>Database</h2>
+      <div>{databaseStatusInformation}</div>
+    </>
   );
 }

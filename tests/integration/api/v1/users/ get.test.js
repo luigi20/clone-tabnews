@@ -2,6 +2,7 @@ import orchestrator from "tests/orchestrator.js";
 import { version as uuid_version } from "uuid";
 import setCookieParser from "set-cookie-parser";
 import session from "models/session.js";
+import webserver from "infra/webserver";
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await orchestrator.clearDatabase();
@@ -14,6 +15,8 @@ describe("GET /api/v1/users", () => {
       const create_user = await orchestrator.createUser({
         username: "UserWithValidSession",
       });
+
+      const activated_user = await orchestrator.activate_user(create_user);
       const session_object = await orchestrator.create_session(create_user.id);
       const response = await fetch("http://localhost:3000/api/v1/users", {
         headers: {
@@ -23,16 +26,16 @@ describe("GET /api/v1/users", () => {
       expect(response.status).toBe(200);
       const cache_control = response.headers.get("Cache-Control");
       expect(cache_control).toBe(
-        "no-store, no-cacje, max-age=0, must-revalidate",
+        "no-store, no-cache, max-age=0, must-revalidate",
       );
       const response_body = await response.json();
       expect(response_body).toEqual({
         id: response_body.id,
         username: "UserWithValidSession",
         email: create_user.email,
-        password: create_user.password,
+        features: ["create:session", "read:session", "update:user"],
         created_at: create_user.created_at.toISOString(),
-        updated_at: create_user.updated_at.toISOString(),
+        updated_at: activated_user.updated_at.toISOString(),
       });
       expect(uuid_version(response_body.id)).toBe(4);
       expect(Date.parse(response_body.created_at)).not.toBeNaN();
@@ -124,42 +127,45 @@ describe("GET /api/v1/users", () => {
       });
     });
 
-    test("With halftime session", async () => {
+    test("With halfway-expired session", async () => {
       jest.useFakeTimers({
-        now: new Date(
-          Date.now() -
-            session.expiration_in_milliseconds +
-            60 * 60 * 24 * 15 * 1000,
-        ),
+        now: new Date(Date.now() - session.expiration_in_milliseconds / 2),
       });
+
       const createdUser = await orchestrator.createUser({
-        username: "UserWithHalfTimeSession",
+        username: "UserWithHalfwayExpiredSession",
       });
+
+      const activatedUser = await orchestrator.activate_user(createdUser);
 
       const sessionObject = await orchestrator.create_session(createdUser.id);
+
       jest.useRealTimers();
 
-      const response = await fetch(`http://localhost:3000/api/v1/users`, {
+      const response = await fetch(`${webserver.origin}/api/v1/users`, {
         headers: {
-          Cookie: `session_id=${sessionObject.token}`,
+          cookie: `session_id=${sessionObject.token}`,
         },
       });
+
       expect(response.status).toBe(200);
+
       const responseBody = await response.json();
+
       expect(responseBody).toEqual({
         id: createdUser.id,
-        username: "UserWithHalfTimeSession",
+        username: "UserWithHalfwayExpiredSession",
         email: createdUser.email,
-        password: createdUser.password,
+        features: ["create:session", "read:session", "update:user"],
         created_at: createdUser.created_at.toISOString(),
-        updated_at: createdUser.updated_at.toISOString(),
+        updated_at: activatedUser.updated_at.toISOString(),
       });
 
       expect(uuid_version(responseBody.id)).toBe(4);
       expect(Date.parse(responseBody.created_at)).not.toBeNaN();
       expect(Date.parse(responseBody.updated_at)).not.toBeNaN();
 
-      // Session renewal assetion
+      // Session renewal assertions
       const renewedSessionObject = await session.findOneValidByToken(
         sessionObject.token,
       );
@@ -171,7 +177,7 @@ describe("GET /api/v1/users", () => {
         renewedSessionObject.updated_at > sessionObject.updated_at,
       ).toEqual(true);
 
-      // Set-cookie assertion
+      // Set‑Cookie assertions
       const parsedSetCookie = setCookieParser(response, {
         map: true,
       });
@@ -182,6 +188,20 @@ describe("GET /api/v1/users", () => {
         maxAge: session.expiration_in_milliseconds / 1000,
         path: "/",
         httpOnly: true,
+      });
+    });
+  });
+
+  describe("Anonymous user", () => {
+    test("Retrieving the endpoint", async () => {
+      const response = await fetch("http://localhost:3000/api/v1/users");
+      expect(response.status).toBe(403);
+      const response_body = await response.json();
+      expect(response_body).toEqual({
+        name: "ForbiddenError",
+        message: "Você não possui permissão para executar esta ação.",
+        action: 'Verifique se o seu usuário possui a feature "read:session"',
+        status_code: 403,
       });
     });
   });

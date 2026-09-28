@@ -6,6 +6,8 @@ async function create(user_input_values) {
   await validateUniqueEmail(user_input_values.email);
   await validateUniqueUserName(user_input_values.username);
   await hash_password_in_object(user_input_values);
+  injectDefaultFeaturesInObject(user_input_values);
+
   const new_user = await runInsertQuery(user_input_values);
   return new_user;
 
@@ -13,14 +15,15 @@ async function create(user_input_values) {
     try {
       const result = await database.query({
         text: `
-          INSERT INTO users (username, email, password)
-          VALUES ($1, $2, $3)
+          INSERT INTO users (username, email, password, features)
+          VALUES ($1, $2, $3,$4)
           RETURNING *;
         `,
         values: [
           user_input_values.username,
           user_input_values.email,
           user_input_values.password,
+          user_input_values.features,
         ],
       });
 
@@ -28,6 +31,10 @@ async function create(user_input_values) {
     } catch (error) {
       throw error;
     }
+  }
+
+  function injectDefaultFeaturesInObject(user_input_values) {
+    user_input_values.features = ["read:activation_token"];
   }
 }
 
@@ -103,6 +110,50 @@ async function findOneByEmail(email) {
         action: "Verifique se o email está digitado corretamente.",
         status_code: 404,
       });
+    return result.rows[0];
+  }
+}
+
+async function setFeatures(user_id, features) {
+  const result = await runUpdateQuery(user_id, features);
+  return result;
+
+  async function runUpdateQuery(user_id, features) {
+    const result = await database.query({
+      text: `
+        UPDATE users
+        SET
+          features = $2,
+          updated_at = timezone('utc', now())
+        WHERE
+          id = $1
+        RETURNING *;
+      `,
+      values: [user_id, features],
+    });
+
+    return result.rows[0];
+  }
+}
+
+async function addFeatures(user_id, features) {
+  const result = await runUpdateQuery(user_id, features);
+  return result;
+
+  async function runUpdateQuery(user_id, features) {
+    const result = await database.query({
+      text: `
+        UPDATE users
+        SET
+          features = array_cat(features,$2),
+          updated_at = timezone('utc', now())
+        WHERE
+          id = $1
+        RETURNING *;
+      `,
+      values: [user_id, features],
+    });
+
     return result.rows[0];
   }
 }
@@ -195,6 +246,8 @@ const user = {
   update,
   findOneByEmail,
   findOneById,
+  setFeatures,
+  addFeatures,
 };
 
 export default user;

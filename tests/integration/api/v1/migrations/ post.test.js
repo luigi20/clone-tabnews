@@ -1,45 +1,80 @@
-import database from "infra/database";
 import orchestrator from "tests/orchestrator.js";
+import webserver from "infra/webserver.js";
+
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
-  await database.query("drop schema public cascade; create schema public;");
+  await orchestrator.clearDatabase();
+  await orchestrator.runPendingMigrations();
 });
 
 describe("POST /api/v1/migrations", () => {
   describe("Anonymous user", () => {
-    describe("Retrieving pending migrations", () => {
-      test("for first time", async () => {
-        const response = await fetch(
-          "http://localhost:3000/api/v1/migrations",
-          {
-            method: "POST",
-          },
-        );
-        expect(response.status).toBe(201);
-        const response_body = await response.json();
-        const migrationCount = await database.query({
-          text: "SELECT COUNT(*)::int FROM pgmigrations",
-        });
-        expect(migrationCount.rows[0].count).toBe(response_body.length);
-        expect(response_body.length).toBeGreaterThan(0);
-        expect(Array.isArray(response_body)).toBe(true);
+    test("Running pending migrations", async () => {
+      const response = await fetch(`${webserver.origin}/api/v1/migrations`, {
+        method: "POST",
       });
 
-      test("for second time", async () => {
-        const response = await fetch(
-          "http://localhost:3000/api/v1/migrations",
-          {
-            method: "POST",
-          },
-        );
-        expect(response.status).toBe(200);
-        const response_body = await response.json();
-        const migrationCount = await database.query({
-          text: "SELECT COUNT(*)::int FROM pgmigrations",
-        });
-        expect(response_body.length).toBe(0);
-        expect(Array.isArray(response_body)).toBe(true);
+      expect(response.status).toBe(403);
+
+      const responseBody = await response.json();
+
+      expect(responseBody).toEqual({
+        name: "ForbiddenError",
+        message: "Você não possui permissão para executar esta ação.",
+        action:
+          'Verifique se o seu usuário possui a feature "create:migration"',
+        status_code: 403,
       });
+    });
+  });
+
+  describe("Default user", () => {
+    test("Running pending migrations", async () => {
+      const createdUser = await orchestrator.createUser();
+      const activatedUser = await orchestrator.activate_user(createdUser);
+      const sessionObject = await orchestrator.create_session(activatedUser.id);
+
+      const response = await fetch(`${webserver.origin}/api/v1/migrations`, {
+        method: "POST",
+        headers: {
+          Cookie: `session_id=${sessionObject.token}`,
+        },
+      });
+
+      expect(response.status).toBe(403);
+
+      const responseBody = await response.json();
+
+      expect(responseBody).toEqual({
+        name: "ForbiddenError",
+        message: "Você não possui permissão para executar esta ação.",
+        action:
+          'Verifique se o seu usuário possui a feature "create:migration"',
+        status_code: 403,
+      });
+    });
+  });
+
+  describe("Privileged user", () => {
+    test("With `create:migration`", async () => {
+      const createdUser = await orchestrator.createUser();
+      const activatedUser = await orchestrator.activate_user(createdUser);
+
+      await orchestrator.addFeaturesToUser(createdUser, ["create:migration"]);
+      const sessionObject = await orchestrator.create_session(activatedUser.id);
+
+      const response = await fetch(`${webserver.origin}/api/v1/migrations`, {
+        method: "POST",
+        headers: {
+          Cookie: `session_id=${sessionObject.token}`,
+        },
+      });
+
+      expect(response.status).toBe(200);
+
+      const responseBody = await response.json();
+
+      expect(Array.isArray(responseBody)).toBe(true);
     });
   });
 });

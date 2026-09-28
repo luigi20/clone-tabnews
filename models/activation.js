@@ -1,0 +1,137 @@
+import email from "infra/email.js";
+import database from "infra/database.js";
+import webserver from "infra/webserver.js";
+import user from "models/user.js";
+import authorization from "./authorization";
+import { ForbiddenError, NotFoundError } from "infra/errors";
+
+const expiration_in_milliseconds = 60 * 15 * 1000; // 15 minutes
+
+async function create(user_id) {
+  const expires_at = new Date(Date.now() + expiration_in_milliseconds);
+
+  const new_token = await run_insert_query(user_id, expires_at);
+
+  return new_token;
+
+  async function run_insert_query(user_id, expires_at) {
+    const result = await database.query({
+      text: `
+        INSERT INTO user_activation_tokens (
+          user_id,
+          expires_at
+        )
+        VALUES (
+          $1,
+          $2
+        )
+        RETURNING *;
+      `,
+      values: [user_id, expires_at],
+    });
+
+    return result.rows[0];
+  }
+}
+
+async function send_email_to_user(user, activation_token) {
+  await email.send({
+    from: "FinTab <contato@fintab.com.br>",
+    to: user.email,
+    subject: "Ative seu cadastro no FinTab!",
+    text: `${user.username}, clique no link abaixo para ativar seu cadastro no FinTab:
+${webserver.origin}/cadastro/ativar/${activation_token.id}
+
+Atenciosamente,
+Equipe FinTab`,
+  });
+}
+
+async function findOneValidById(tokenId) {
+  const activationTokenObject = await runSelectQuery(tokenId);
+
+  return activationTokenObject;
+
+  async function runSelectQuery(tokenId) {
+    const results = await database.query({
+      text: `
+       SELECT
+         *
+       FROM
+         user_activation_tokens
+       WHERE
+         id = $1
+         AND expires_at > NOW()
+         AND used_at IS NULL
+       LIMIT
+         1
+     ;`,
+      values: [tokenId],
+    });
+
+    if (results.rowCount === 0) {
+      throw new NotFoundError({
+        message:
+          "O token de ativação utilizado não foi encontrado no sistema ou expirou.",
+        action: "Faça um novo cadastro.",
+      });
+    }
+
+    return results.rows[0];
+  }
+}
+
+async function markTokenAsUsed(token_id) {
+  const result = await database.query({
+    text: `
+      UPDATE
+        user_activation_tokens
+      SET
+        used_at = timezone('utc', now()),
+        updated_at = timezone('utc', now())
+      WHERE
+        id = $1
+        AND used_at IS NULL
+      RETURNING
+        *;
+    `,
+    values: [token_id],
+  });
+
+  if (result.rowCount === 0) {
+    throw new NotFoundError({
+      name: "NotFoundError",
+      message:
+        "O token de ativação utilizado não foi encontrado no sistema ou expirou.",
+      action: "Faça um novo cadastro.",
+    });
+  }
+
+  return result.rows[0];
+}
+
+async function activateUserByUserId(user_id) {
+  const user_to_activate = await user.findOneById(user_id);
+  if (!authorization.can(user_to_activate, "read:activation_token"))
+    throw new ForbiddenError({
+      message: "Você não pode mais utilizar tokens de ativação.",
+      action: "Entre em contato com o suporte.",
+    });
+  const activation_user = await user.setFeatures(user_id, [
+    "create:session",
+    "read:session",
+    "update:user",
+  ]);
+  return activation_user;
+}
+
+const activation = {
+  send_email_to_user,
+  create,
+  findOneValidById,
+  markTokenAsUsed,
+  activateUserByUserId,
+  expiration_in_milliseconds,
+};
+
+export default activation;
