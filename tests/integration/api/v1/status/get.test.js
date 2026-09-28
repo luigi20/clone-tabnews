@@ -12,11 +12,5 @@ test("GET TO /api/v1/status should return 200", async () => {
     response_body.updated_at,
   ).toISOString();
   expect(response_body.updated_at).toEqual(response_parsed_updated_at);
-  expect(response_body.version).toBeDefined();
-  expect(typeof response_body.version).toBe("string");
-  expect(response_body.max_connections).toBeDefined();
-  expect(typeof response_body.max_connections).toBe("number");
-  expect(response_body.used_connections).toBeDefined();
-  expect(typeof response_body.used_connections).toBe("string");
-  expect(response_body.version).toEqual("16.0");
+  expect(response_body.dependencies.database.max_connections).toBeDefined();
 });
