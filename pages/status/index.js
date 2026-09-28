@@ -1,50 +1,60 @@
-import { createRouter } from "next-connect";
-import database from "infra/database.js";
-import controller from "infra/controller.js";
-import authorization from "models/authorization.js";
+import useSWR from "swr";
 
-export default createRouter()
-  .use(controller.injectAnonymousOrUser)
-  .get(getHandler)
-  .handler(controller.errorHandlers);
+async function fetchAPI(key) {
+  const response = await fetch(key);
+  const responseBody = await response.json();
+  return responseBody;
+}
 
-async function getHandler(request, response) {
-  const userTryingToGet = request.context.user;
-  const updatedAt = new Date().toISOString();
-
-  const databaseVersionResult = await database.query("SHOW server_version;");
-  const databaseVersionValue = databaseVersionResult.rows[0].server_version;
-
-  const databaseMaxConnectionsResult = await database.query(
-    "SHOW max_connections;",
+export default function StatusPage() {
+  return (
+    <>
+      <h1>Status</h1>
+      <UpdatedAt />
+      <DatabaseStatus />
+    </>
   );
-  const databaseMaxConnectionsValue =
-    databaseMaxConnectionsResult.rows[0].max_connections;
+}
 
-  const databaseName = process.env.POSTGRES_DATABASE;
-  const databaseOpenedConnectionsResult = await database.query({
-    text: "SELECT count(*)::int FROM pg_stat_activity WHERE datname = $1;",
-    values: [databaseName],
+function UpdatedAt() {
+  const { isLoading, data } = useSWR("/api/v1/status", fetchAPI, {
+    refreshInterval: 2000,
   });
-  const databaseOpenedConnectionsValue =
-    databaseOpenedConnectionsResult.rows[0].count;
 
-  const statusObject = {
-    updated_at: updatedAt,
-    dependencies: {
-      database: {
-        version: databaseVersionValue,
-        max_connections: parseInt(databaseMaxConnectionsValue),
-        opened_connections: databaseOpenedConnectionsValue,
-      },
-    },
-  };
+  let updatedAtText = "Carregando...";
 
-  const secureOutputValues = authorization.filterOutput(
-    userTryingToGet,
-    "read:status",
-    statusObject,
+  if (!isLoading && data) {
+    updatedAtText = new Date(data.updated_at).toLocaleString("pt-BR");
+  }
+
+  return <div>Última atualização: {updatedAtText}</div>;
+}
+
+function DatabaseStatus() {
+  const { isLoading, data } = useSWR("/api/v1/status", fetchAPI, {
+    refreshInterval: 2000,
+  });
+
+  let databaseStatusInformation = "Carregando...";
+
+  if (!isLoading && data) {
+    databaseStatusInformation = (
+      <>
+        <div>Versão: {data.dependencies.database.version}</div>
+        <div>
+          Conexões abertas: {data.dependencies.database.opened_connections}
+        </div>
+        <div>
+          Conexões máximas: {data.dependencies.database.max_connections}
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <h2>Database</h2>
+      <div>{databaseStatusInformation}</div>
+    </>
   );
-
-  return response.status(200).json(secureOutputValues);
 }
